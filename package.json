@@ -5,7 +5,8 @@
   "license": "MIT",
   "packageManager": "yarn@3.3.1",
   "scripts": {
-    "start": "ts-node src/index.ts",
+    "start": "NODE_PATH=./build pm2-runtime start build/index.js",
+    "build": "tsc",
     "dev": "nodemon --watch . --exec 'ts-node' src/index.ts"
   },
   "devDependencies": {
@@ -17,6 +18,7 @@
   "dependencies": {
     "dotenv": "^16.0.3",
     "fastify": "^4.11.0",
+    "pm2": "^5.2.2",
     "undici": "^5.14.0"
   }
 }
