@@ -15,7 +15,7 @@ server.get("/", async (req, res) => {
     process.env.HTTP_PATH ?? "http://coolify:3000/webhooks/traefik/main.json"
   );
   console.log(req.url);
-  const body: Traefik = await result.body.json();
+  const body: Traefik = (await result.body.json()) ?? {};
   return res.send(replacer(body, data));
 });
 
