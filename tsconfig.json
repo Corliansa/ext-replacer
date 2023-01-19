@@ -3,7 +3,7 @@
     "lib": ["es2021"],
     "outDir": "build",
     "module": "commonjs",
-    "target": "ES6",
+    "target": "ESNext",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,

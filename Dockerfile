@@ -2,17 +2,15 @@ FROM node:alpine
 
 WORKDIR /usr/app
 
-COPY package.json .
-
-COPY yarn.lock .
+COPY package.json yarn.lock ./
 
 RUN corepack enable
 
 RUN yarn set version berry
 
-RUN yarn install --immutable
+RUN yarn install --immutable --check-cache
 
-COPY . .
+COPY ./ ./
 
 RUN yarn
 
