@@ -3,10 +3,19 @@ import * as dotenv from "dotenv"; // see https://github.com/motdotla/dotenv#how-
 dotenv.config();
 import fastify from "fastify";
 import { request } from "undici";
-import { replacer } from "./replacer";
+import { DeepPartial, replacer } from "./replacer";
+
+const tryRequire = (path: string) => {
+  try {
+    return require(path);
+  } catch (e) {
+    return null;
+  }
+};
 
 const server = fastify();
-const data: Traefik = require(process.env.JSON_PATH ?? "../data") ?? {};
+const data: DeepPartial<Traefik> =
+  tryRequire(process.env.JSON_PATH ?? "../data") ?? {};
 
 console.log("loaded data:\n", JSON.stringify(data, null, 1));
 
@@ -14,7 +23,6 @@ server.get("/", async (req, res) => {
   const result = await request(
     process.env.HTTP_PATH ?? "http://coolify:3000/webhooks/traefik/main.json"
   );
-  console.log(req.url);
   const body: Traefik = (await result.body.json()) ?? {};
   return res.send(replacer(body, data));
 });
