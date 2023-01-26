@@ -86,7 +86,7 @@ server.get("/auth", async (req, reply) => {
     }
 
     const allowlist: String[] = tryRequire(
-      process.env.ALLOWLIST_PATH ?? "../data/allowlist"
+      process.env.ALLOW_PATH ?? "../data/allowlist"
     );
 
     if (!allowlist) {
@@ -109,15 +109,23 @@ server.listen({ host: "0.0.0.0", port: 8080 }, (err, address) => {
     process.exit(1);
   }
   console.log(`Server listening at ${address}`);
+
   console.log(
-    "loaded data:\n",
+    "loaded config:\n",
     JSON.stringify(
       tryRequire(process.env.JSON_PATH ?? "../data/config") ?? {},
       null,
       1
     )
   );
-
+  console.log(
+    "loaded allowlist:\n",
+    JSON.stringify(
+      tryRequire(process.env.ALLOW_PATH ?? "../data/allowlist") ?? {},
+      null,
+      1
+    )
+  );
   exec(cmd, (err, stdout) => {
     if (err) {
       console.error(err);
