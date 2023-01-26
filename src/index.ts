@@ -97,9 +97,7 @@ server.get("/auth", async (req, reply) => {
       return allow();
     }
 
-    return reply
-      .status(400)
-      .send({ error: "unknown", data: { headers, parsed } });
+    return deny();
   } catch (e) {
     return reply.status(500).send({ error: e });
   }
