@@ -27,4 +27,4 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          tags: corliansa/corliansa:latest
+          tags: corliansa/ext-replacer:latest
