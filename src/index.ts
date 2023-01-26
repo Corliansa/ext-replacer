@@ -8,6 +8,7 @@ import { exec } from "child_process";
 
 const tryRequire = (path: string) => {
   try {
+    delete require.cache[require.resolve(path)];
     return require(path);
   } catch (e) {
     return null;
@@ -47,7 +48,7 @@ const server = fastify();
 
 server.get("/", async (req, reply) => {
   const data: DeepPartial<Traefik> =
-    tryRequire(process.env.JSON_PATH ?? "../data") ?? {};
+    tryRequire(process.env.JSON_PATH ?? "../data/config") ?? {};
   const result = await request(
     process.env.HTTP_PATH ?? "http://coolify:3000/webhooks/traefik/main.json"
   );
@@ -60,15 +61,45 @@ server.get("/auth", async (req, reply) => {
     const result = await execCmd(cmd);
     const parsed = parseTailscaleStatus(result);
     const headers = `${req.headers["x-forwarded-for"]} ${req.headers["x-forwarded-method"]} ${req.headers["x-forwarded-proto"]} ${req.headers["x-forwarded-host"]} ${req.headers["x-forwarded-port"]} ${req.headers["x-forwarded-uri"]}`;
+
+    const deny = () => {
+      console.log("denied", headers);
+      return reply.status(401).send({ error: "unauthorized" });
+    };
+    const allow = () => {
+      console.log("authorized", headers);
+      return reply.send({ success: true });
+    };
+
+    if (!req.headers["x-forwarded-for"]) {
+      return deny();
+    }
+
+    if (process.env.ALLOW_ALL === "true") {
+      return allow();
+    }
+
     if (
       Object.values(parsed).some((v) => v.ip === req.headers["x-forwarded-for"])
     ) {
-      console.log("authorized", headers);
-      return reply.send({ success: true });
-    } else {
-      console.log("denied", headers);
-      return reply.status(403).send({ error: "unauthorized" });
+      return allow();
     }
+
+    const allowlist: String[] = tryRequire(
+      process.env.ALLOWLIST_PATH ?? "../data/allowlist"
+    );
+
+    if (!allowlist) {
+      return deny();
+    }
+
+    if (allowlist.includes(req.headers["x-forwarded-for"] as string)) {
+      return allow();
+    }
+
+    return reply
+      .status(400)
+      .send({ error: "unknown", data: { headers, parsed } });
   } catch (e) {
     return reply.status(500).send({ error: e });
   }
@@ -83,7 +114,7 @@ server.listen({ host: "0.0.0.0", port: 8080 }, (err, address) => {
   console.log(
     "loaded data:\n",
     JSON.stringify(
-      tryRequire(process.env.JSON_PATH ?? "../data") ?? {},
+      tryRequire(process.env.JSON_PATH ?? "../data/config") ?? {},
       null,
       1
     )

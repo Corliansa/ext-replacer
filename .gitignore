@@ -9,4 +9,5 @@ lib/
 node_modules/
 .env
 data.js
+allowlist.js
 build/
