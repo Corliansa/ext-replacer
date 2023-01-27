@@ -116,27 +116,30 @@ server.listen({ host: "0.0.0.0", port: 8080 }, (err, address) => {
   }
   console.log(`Server listening at ${address}`);
 
+  console.log("loaded config:");
   console.log(
-    "loaded config:\n",
     JSON.stringify(
       tryRequire(process.env.JSON_PATH ?? "../data/config"),
       null,
       1
     )
   );
+
+  console.log("loaded allowlist:");
   console.log(
-    "loaded allowlist:\n",
     JSON.stringify(
       tryRequire(process.env.ALLOW_PATH ?? "../data/allowlist"),
       null,
       1
     )
   );
+
   exec(cmd, (err, stdout) => {
     if (err) {
       console.error(err);
       return;
     }
-    console.log("loaded tailscale:\n", parseTailscaleStatus(stdout));
+    console.log("loaded tailscale:");
+    console.log(parseTailscaleStatus(stdout));
   });
 });
