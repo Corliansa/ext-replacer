@@ -47,12 +47,18 @@ const parseTailscaleStatus = (status: string) => {
 const server = fastify();
 
 server.get("/", async (req, reply) => {
-  const data: DeepPartial<Traefik> =
-    tryRequire(process.env.JSON_PATH ?? "../data/config") ?? {};
+  const config:
+    | DeepPartial<Traefik>
+    | ((config: Traefik) => DeepPartial<Traefik>) = tryRequire(
+    process.env.JSON_PATH ?? "../data/config"
+  );
   const result = await request(
     process.env.HTTP_PATH ?? "http://coolify:3000/webhooks/traefik/main.json"
   );
   const body: Traefik = (await result.body.json()) ?? {};
+
+  const data = typeof config === "function" ? config(body) : config;
+
   return reply.send(replacer(body, data));
 });
 
@@ -113,7 +119,7 @@ server.listen({ host: "0.0.0.0", port: 8080 }, (err, address) => {
   console.log(
     "loaded config:\n",
     JSON.stringify(
-      tryRequire(process.env.JSON_PATH ?? "../data/config") ?? {},
+      tryRequire(process.env.JSON_PATH ?? "../data/config"),
       null,
       1
     )
@@ -121,7 +127,7 @@ server.listen({ host: "0.0.0.0", port: 8080 }, (err, address) => {
   console.log(
     "loaded allowlist:\n",
     JSON.stringify(
-      tryRequire(process.env.ALLOW_PATH ?? "../data/allowlist") ?? {},
+      tryRequire(process.env.ALLOW_PATH ?? "../data/allowlist"),
       null,
       1
     )
