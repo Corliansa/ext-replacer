@@ -1,4 +1,4 @@
-import { Traefik } from "./type";
+import { TailscaleStatus, Traefik } from "./type";
 import * as dotenv from "dotenv"; // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config();
 import fastify from "fastify";
@@ -15,7 +15,8 @@ const tryRequire = (path: string) => {
   }
 };
 
-const cmd = `/bin/tailscale status`;
+const cmd = `/bin/tailscale status --active`;
+const cmdJson = `/bin/tailscale status --json --active`;
 
 const execCmd = async (cmd: string) => {
   return new Promise<string>((resolve, reject) => {
@@ -32,16 +33,47 @@ const execCmd = async (cmd: string) => {
 const parseTailscaleStatus = (status: string) => {
   const lines = status.split(/\n/);
   const result = lines.reduce((acc, line) => {
-    const [value, key, email] = line.split(/\s+/);
+    const [value, key, email, os] = line.split(/\s+/);
     if (key && value) {
       acc[key] = {
         ip: value,
         email,
+        os,
       };
     }
     return acc;
-  }, {} as Record<string, { ip: string; email: string }>);
+  }, {} as Record<string, { ip: string; email: string; os: string }>);
   return result;
+};
+
+const parseTailscaleJson = (stdout: string) => {
+  try {
+    const res: TailscaleStatus = JSON.parse(stdout);
+
+    const selfAddrs = res.Self.Addrs?.map((addr) =>
+      addr.replace(":" + addr.split(":").at(-1), "")
+    );
+    const peerIps = Object.values(res.Peer).flatMap(
+      (peer) => peer.TailscaleIPs
+    );
+    const selfIps = res.Self.TailscaleIPs;
+    const peerCurAddrs = Object.values(res.Peer).map((peer) =>
+      peer.CurAddr.replace(":" + peer.CurAddr.split(":").at(-1), "")
+    );
+
+    const allIps = [
+      ...new Set([
+        ...peerIps,
+        ...selfIps,
+        ...(selfAddrs ?? []),
+        ...peerCurAddrs,
+      ]),
+    ];
+
+    return allIps.filter((ip) => Boolean(ip));
+  } catch {
+    return [];
+  }
 };
 
 const server = fastify();
@@ -64,8 +96,8 @@ server.get("/", async (req, reply) => {
 
 server.get("/auth", async (req, reply) => {
   try {
-    const result = await execCmd(cmd);
-    const parsed = parseTailscaleStatus(result);
+    const result = await execCmd(cmdJson);
+    const parsed = parseTailscaleJson(result);
     const headers = `${req.headers["x-forwarded-for"]} ${req.headers["x-forwarded-method"]} ${req.headers["x-forwarded-proto"]} ${req.headers["x-forwarded-host"]} ${req.headers["x-forwarded-port"]} ${req.headers["x-forwarded-uri"]}`;
 
     const deny = () => {
@@ -85,9 +117,7 @@ server.get("/auth", async (req, reply) => {
       return allow();
     }
 
-    if (
-      Object.values(parsed).some((v) => v.ip === req.headers["x-forwarded-for"])
-    ) {
+    if (parsed.includes(req.headers["x-forwarded-for"] as string)) {
       return allow();
     }
 
@@ -149,5 +179,14 @@ server.listen({ host: "0.0.0.0", port: 8080 }, (err, address) => {
     }
     console.log("loaded tailscale:");
     console.log(parseTailscaleStatus(stdout));
+  });
+
+  exec(cmdJson, (err, stdout) => {
+    if (err) {
+      console.error(err);
+      return;
+    }
+    console.log("loaded tailscale ips:");
+    console.log(parseTailscaleJson(stdout));
   });
 });
