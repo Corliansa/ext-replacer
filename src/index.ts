@@ -109,6 +109,14 @@ server.get("/auth", async (req, reply) => {
   }
 });
 
+server.get("/whoami", async (req, reply) => {
+  return reply.send({
+    ip: req.ip,
+    ips: req.ips,
+    headers: req.headers,
+  });
+});
+
 server.listen({ host: "0.0.0.0", port: 8080 }, (err, address) => {
   if (err) {
     console.error(err);
