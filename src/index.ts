@@ -1,4 +1,4 @@
-import { TailscaleStatus, Traefik } from "./type";
+import { AuthConfig, TailscaleStatus, Traefik } from "./type";
 import * as dotenv from "dotenv"; // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 dotenv.config();
 import fastify from "fastify";
@@ -61,18 +61,19 @@ const parseTailscaleJson = (stdout: string) => {
       peer.CurAddr.replace(":" + peer.CurAddr.split(":").at(-1), "")
     );
 
-    const allIps = [
-      ...new Set([
-        ...peerIps,
-        ...selfIps,
-        ...(selfAddrs ?? []),
-        ...peerCurAddrs,
-      ]),
-    ];
-
-    return allIps.filter((ip) => Boolean(ip));
+    return {
+      peerIps,
+      selfIps,
+      selfAddrs: selfAddrs ?? [],
+      peerCurAddrs,
+    };
   } catch {
-    return [];
+    return {
+      peerIps: [],
+      selfIps: [],
+      selfAddrs: [],
+      peerCurAddrs: [],
+    };
   }
 };
 
@@ -97,15 +98,16 @@ server.get("/", async (req, reply) => {
 server.get("/auth", async (req, reply) => {
   try {
     const result = await execCmd(cmdJson);
-    const parsed = parseTailscaleJson(result);
-    const headers = `${req.headers["x-forwarded-for"]} ${req.headers["x-forwarded-method"]} ${req.headers["x-forwarded-proto"]} ${req.headers["x-forwarded-host"]} ${req.headers["x-forwarded-port"]} ${req.headers["x-forwarded-uri"]}`;
+    const { peerIps, selfIps, selfAddrs, peerCurAddrs } =
+      parseTailscaleJson(result);
+    const headers = `${req.headers["x-forwarded-for"]} ${req.headers["x-forwarded-method"]} ${req.headers["x-forwarded-proto"]}://${req.headers["x-forwarded-host"]}:${req.headers["x-forwarded-port"]}${req.headers["x-forwarded-uri"]}`;
 
     const deny = () => {
-      console.log("denied", headers);
+      console.log("Denied", headers);
       return reply.status(401).send({ error: "unauthorized" });
     };
     const allow = () => {
-      console.log("authorized", headers);
+      console.log("Allowed", headers);
       return reply.send({ success: true });
     };
 
@@ -113,23 +115,40 @@ server.get("/auth", async (req, reply) => {
       return deny();
     }
 
-    if (process.env.ALLOW_ALL === "true") {
-      return allow();
-    }
-
-    if (parsed.includes(req.headers["x-forwarded-for"] as string)) {
-      return allow();
-    }
-
-    const allowlist: String[] = tryRequire(
-      process.env.ALLOW_PATH ?? "../data/allowlist"
+    const authConfig: AuthConfig = tryRequire(
+      process.env.ALLOW_PATH ?? "../data/auth"
     );
 
-    if (!allowlist) {
+    if (authConfig.allowAll === true) {
+      return allow();
+    }
+
+    if (authConfig.denyAll === true) {
       return deny();
     }
 
-    if (allowlist.includes(req.headers["x-forwarded-for"] as string)) {
+    if (
+      Array.isArray(authConfig.denyIps) &&
+      authConfig.denyIps?.includes(req.headers["x-forwarded-for"] as string)
+    ) {
+      return deny();
+    }
+
+    const ips = [
+      ...peerIps,
+      ...selfIps,
+      ...selfAddrs,
+      ...(authConfig.allowPeerInsecureIp ? peerCurAddrs : []),
+    ];
+
+    if (ips.includes(req.headers["x-forwarded-for"] as string)) {
+      return allow();
+    }
+
+    if (
+      Array.isArray(authConfig.allowIps) &&
+      authConfig.allowIps.includes(req.headers["x-forwarded-for"] as string)
+    ) {
       return allow();
     }
 
@@ -163,13 +182,9 @@ server.listen({ host: "0.0.0.0", port: 8080 }, (err, address) => {
     )
   );
 
-  console.log("loaded allowlist:");
+  console.log("loaded auth config:");
   console.log(
-    JSON.stringify(
-      tryRequire(process.env.ALLOW_PATH ?? "../data/allowlist"),
-      null,
-      1
-    )
+    JSON.stringify(tryRequire(process.env.AUTH_PATH ?? "../data/auth"), null, 1)
   );
 
   exec(cmd, (err, stdout) => {

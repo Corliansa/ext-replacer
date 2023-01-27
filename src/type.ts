@@ -112,3 +112,11 @@ export type UserObject = {
   ProfilePicURL: string;
   Roles: any[];
 };
+
+export type AuthConfig = {
+  allowIps?: string[];
+  denyIps?: string[];
+  allowAll?: boolean;
+  denyAll?: boolean;
+  allowPeerInsecureIp?: boolean;
+};
