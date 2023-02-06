@@ -22,4 +22,4 @@ USER node
 
 EXPOSE 8080
 
-CMD ["pm2-runtime", "start", "yarn", "--", "start"]
+CMD ["pm2-runtime", "start", "yarn", "--max-memory-restart", "300M", "--", "start"]
