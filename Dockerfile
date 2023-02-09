@@ -4,8 +4,7 @@ WORKDIR /usr/app
 
 RUN yarn set version berry
 
-COPY .yarn/releases ./yarn/releases
-COPY .yarn/plugins ./yarn/plugins
+COPY .yarn ./.yarn
 
 COPY package.json yarn.lock .yarnrc.yml ./
 
