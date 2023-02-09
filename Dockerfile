@@ -2,13 +2,11 @@ FROM node:alpine
 
 WORKDIR /usr/app
 
-COPY package.json yarn.lock ./
+COPY package.json yarn.lock .yarn .yarnrc.yml ./
 
 RUN yarn install --immutable --check-cache
 
 COPY ./ ./
-
-RUN yarn
 
 RUN yarn build
 
