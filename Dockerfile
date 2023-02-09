@@ -4,10 +4,6 @@ WORKDIR /usr/app
 
 COPY package.json yarn.lock ./
 
-RUN corepack enable
-
-RUN yarn set version berry
-
 RUN yarn install --immutable --check-cache
 
 COPY ./ ./
