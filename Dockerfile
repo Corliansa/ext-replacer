@@ -4,7 +4,10 @@ WORKDIR /usr/app
 
 RUN yarn set version berry
 
-COPY package.json yarn.lock .yarn .yarnrc.yml ./
+COPY .yarn/releases ./yarn/releases
+COPY .yarn/plugins ./yarn/plugins
+
+COPY package.json yarn.lock .yarnrc.yml ./
 
 RUN yarn install --immutable --check-cache
 
