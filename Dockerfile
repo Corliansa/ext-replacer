@@ -2,6 +2,8 @@ FROM node:alpine
 
 WORKDIR /usr/app
 
+RUN corepack enable
+
 RUN yarn set version berry
 
 COPY .yarn ./.yarn
