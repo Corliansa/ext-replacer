@@ -16,10 +16,8 @@ COPY ./ ./
 
 RUN yarn build
 
-RUN npm i -g pm2
-
 USER node
 
 EXPOSE 8080
 
-CMD ["pm2-runtime", "start", "yarn", "--max-memory-restart", "300M", "--", "start"]
+CMD ["yarn", "start"]
