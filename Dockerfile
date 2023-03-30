@@ -16,8 +16,6 @@ COPY ./ ./
 
 RUN yarn build
 
-USER node
-
 EXPOSE 8080
 
 CMD ["yarn", "start"]
